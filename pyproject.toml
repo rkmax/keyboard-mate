@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "keyboard-mate"
-version = "0.1.1"
+version = "0.1.2"
 description = ""
 authors = ["Julian reyes Escrigas <contacto@julianreyes.co>"]
 readme = "README.md"
