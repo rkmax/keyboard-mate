@@ -12,4 +12,7 @@ bump-patch:
 	@poetry version patch
 	@git add pyproject.toml
 	@git commit -m "Bump patch version"
-	@git tag "v$(shell poetry version -s)"
+
+tag:
+	@echo "Tagging version"
+	@git tag `poetry version -s`
