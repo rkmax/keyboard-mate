@@ -1,2 +1,6 @@
+# build files
 dist
+# python cache
 *.pyc
+# poetry virtualenv
+.venv
