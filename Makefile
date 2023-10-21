@@ -6,3 +6,10 @@ lint-fix:
 	@echo "Fix Linting with isort + black + flakehell"
 	@isort .
 	@black .
+
+bump-patch:
+	@echo "Bumping version patch"
+	poetry version patch
+	git add pyproject.toml
+	git commit -m "Bump patch version"
+	git tag "v$(shell poetry version -s)"
