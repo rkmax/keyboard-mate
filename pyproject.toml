@@ -1,0 +1,24 @@
+[tool.poetry]
+name = "keyboard-mate"
+version = "0.1.0"
+description = ""
+authors = ["Julian reyes Escrigas <contacto@julianreyes.co>"]
+readme = "README.md"
+packages = [
+    { include = "kbm_cli" },
+]
+include = ["icons/*"]
+
+[tool.poetry.dependencies]
+python = ">=3.11,<3.13"
+evdev = "^1.6.1"
+pyside6 = "^6.2.0"
+
+[tool.poetry.scripts]
+kbm-caps = "kbm_cli.main:caps"
+kbm-nums = "kbm_cli.main:nums"
+
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
