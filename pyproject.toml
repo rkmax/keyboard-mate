@@ -18,6 +18,16 @@ pyside6 = "^6.2.0"
 kbm-caps = "kbm_cli.main:caps"
 kbm-nums = "kbm_cli.main:nums"
 
+[tool.poetry.group.lint.dependencies]
+black = "^23.10.0"
+isort = "^5.12.0"
+flakehell = "^0.9.0"
+
+[tool.isort]
+profile = "black"
+
+[tool.flakehell]
+max-line-length = 120
 
 [build-system]
 requires = ["poetry-core"]
