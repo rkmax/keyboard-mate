@@ -51,26 +51,31 @@ class LockKeyTrayApp:
         exit_action = menu.addAction("Exit")
         exit_action.triggered.connect(self.app_quit)
         self.tray.setContextMenu(menu)
+        self.tray.activated.connect(self.toggle_key_state)
 
     def monitor_key(self):
         devices = [InputDevice(path) for path in list_devices()]
         for device in devices:
             if device.capabilities().get(ecodes.EV_LED):
                 self.device = device
-                self.set_key_state()
+                self.set_key_state(self.initial_state)
                 self.monitor_lock_key(device)
 
     def is_key_enabled(self, device):
         return LEDS[self.key_type] in device.leds()
 
-    def set_key_state(self):
+    def toggle_key_state(self, reason):
+        if reason == QSystemTrayIcon.ActivationReason.Trigger:
+            self.set_key_state(not self.is_key_enabled(self.device))
+
+    def set_key_state(self, state=None):
         if self.device is None:
             return
 
-        if self.initial_state is None:
+        if state is None:
             return
 
-        if self.initial_state != self.is_key_enabled(self.device):
+        if state != self.is_key_enabled(self.device):
             ui = UInput()
             ui.write(ecodes.EV_KEY, KEY_CODES[self.key_type], 1)
             ui.syn()
@@ -107,7 +112,7 @@ class LockKeyTrayApp:
         self.thread.start()
 
         self.timer = QTimer(self.app)
-        self.timer.setInterval(500)
+        self.timer.setInterval(100)
         self.timer.timeout.connect(self.update_tray_icon)
         self.timer.start()
 
