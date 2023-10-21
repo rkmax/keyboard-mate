@@ -3,8 +3,10 @@ import queue
 import signal
 import sys
 import threading
+import argparse
+from typing import Optional
 
-from evdev import InputDevice, ecodes, list_devices
+from evdev import InputDevice, ecodes, list_devices, UInput
 from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
 from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
@@ -33,9 +35,11 @@ class LockKeyTrayApp:
     queue: queue.Queue
     key_type: str
     tray: QSystemTrayIcon
+    initial_state: Optional[bool]
 
-    def __init__(self, key_type):
+    def __init__(self, key_type, initial_state: Optional[bool] = None):
         self.key_type = key_type
+        self.initial_state = initial_state
         self.app = QApplication(sys.argv)
         self.tray = QSystemTrayIcon(self.app)
         self.queue = queue.Queue()
@@ -52,13 +56,27 @@ class LockKeyTrayApp:
         for device in devices:
             if device.capabilities().get(ecodes.EV_LED):
                 self.device = device
+                self.set_key_state()
                 self.monitor_lock_key(device)
 
     def is_key_enabled(self, device):
         return LEDS[self.key_type] in device.leds()
 
+    def set_key_state(self):
+        if self.device is None:
+            return
+
+        if self.initial_state is None:
+            return
+
+        if self.initial_state != self.is_key_enabled(self.device):
+            ui = UInput()
+            ui.write(ecodes.EV_KEY, KEY_CODES[self.key_type], 1)
+            ui.syn()
+            ui.write(ecodes.EV_KEY, KEY_CODES[self.key_type], 0)
+            ui.syn()
+
     def monitor_lock_key(self, device):
-        print("monitoring device", device.path)
         key_state = self.is_key_enabled(device)
         self.queue.put(key_state)
 
@@ -101,8 +119,8 @@ class LockKeyTrayApp:
         self.app.quit()
 
 
-def main(key: str):
-    app = LockKeyTrayApp(key)
+def main(key: str, set_on: Optional[bool] = None):
+    app = LockKeyTrayApp(key, set_on)
 
     signal.signal(signal.SIGINT, lambda *args: app.app_quit())
     signal.signal(signal.SIGTERM, lambda *args: app.app_quit())
@@ -110,15 +128,24 @@ def main(key: str):
 
 
 def caps():
-    main("caps")
+    cap_args = get_args("caps")
+    main(cap_args.key, cap_args.set_on)
 
 
 def nums():
-    main("nums")
+    num_args = get_args("nums")
+    main(num_args.key, num_args.set_on)
+
+
+def get_args(default=None):
+    arg_parser = argparse.ArgumentParser()
+    # make it optional if default is pass it
+    key_param_name = "key" if default is None else '--key'
+    arg_parser.add_argument(key_param_name, choices=["caps", "nums"], default=default, help="Key to monitor")
+    arg_parser.add_argument("--set-on", default=None, action="store_true", help="Set initial state to ON")
+    return arg_parser.parse_args()
 
 
 if __name__ == "__main__":
-    if len(sys.argv) < 2 or sys.argv[1] not in ["nums", "caps"]:
-        print("Uso: python script_name.py [nums|caps]")
-        sys.exit(1)
-    main(sys.argv[1])
+    args = get_args()
+    main(args.key, args.set_on)
