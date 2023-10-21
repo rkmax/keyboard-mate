@@ -15,4 +15,4 @@ bump-patch:
 
 tag:
 	@echo "Tagging version"
-	@git tag `poetry version -s`
+	@git tag v`poetry version -s`
