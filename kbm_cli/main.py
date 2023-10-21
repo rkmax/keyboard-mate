@@ -4,6 +4,7 @@ import signal
 import sys
 import threading
 import argparse
+import time
 from typing import Optional
 
 from evdev import InputDevice, ecodes, list_devices, UInput
@@ -83,6 +84,7 @@ class LockKeyTrayApp:
         while not self.is_quit:
             event = device.read_one()
             if event is None:
+                time.sleep(0.05)
                 continue
             if event.type == ecodes.EV_LED:
                 if event.code == LEDS[self.key_type]:
