@@ -1,13 +1,13 @@
 import os
+import queue
 import signal
 import sys
-import queue
 import threading
 
-from PySide6.QtCore import QTimer, Qt
+from evdev import InputDevice, ecodes, list_devices
+from PySide6.QtCore import QTimer
 from PySide6.QtGui import QIcon
-from PySide6.QtWidgets import QApplication, QSystemTrayIcon, QMenu
-from evdev import InputDevice, list_devices, ecodes
+from PySide6.QtWidgets import QApplication, QMenu, QSystemTrayIcon
 
 ICONS_FOLDER = os.path.join(os.path.dirname(__file__), "../icons")
 
@@ -26,12 +26,18 @@ KEY_CODES = {
 
 
 class LockKeyTrayApp:
+    timer: QTimer
+    device: InputDevice
+    is_quit: bool
+    thread: threading.Thread
+    queue: queue.Queue
+    key_type: str
+    tray: QSystemTrayIcon
+
     def __init__(self, key_type):
         self.key_type = key_type
         self.app = QApplication(sys.argv)
-
         self.tray = QSystemTrayIcon(self.app)
-
         self.queue = queue.Queue()
         self.thread = threading.Thread(target=self.monitor_key)
         self.is_quit = False
@@ -45,6 +51,7 @@ class LockKeyTrayApp:
         devices = [InputDevice(path) for path in list_devices()]
         for device in devices:
             if device.capabilities().get(ecodes.EV_LED):
+                self.device = device
                 self.monitor_lock_key(device)
 
     def is_key_enabled(self, device):
@@ -55,7 +62,10 @@ class LockKeyTrayApp:
         key_state = self.is_key_enabled(device)
         self.queue.put(key_state)
 
-        for event in device.read_loop():
+        while not self.is_quit:
+            event = device.read_one()
+            if event is None:
+                continue
             if event.type == ecodes.EV_LED:
                 if event.code == LEDS[self.key_type]:
                     key_state = self.is_key_enabled(device)
@@ -65,11 +75,12 @@ class LockKeyTrayApp:
         while not self.queue.empty():
             key_state = self.queue.get_nowait()
             icon_path = f"{self.key_type}" + ("_on" if key_state else "_off") + ".png"
-            print(f"Updating tray icon to {os.path.join(ICONS_FOLDER, icon_path)}")
             self.tray.setIcon(QIcon(os.path.join(ICONS_FOLDER, icon_path)))
 
     def run(self):
-        self.tray.setIcon(QIcon(os.path.join(ICONS_FOLDER, "icons8-num-lock-48_off.png")))
+        self.tray.setIcon(
+            QIcon(os.path.join(ICONS_FOLDER, "icons8-num-lock-48_off.png"))
+        )
         self.tray.setVisible(True)
         self.tray.show()
 
@@ -85,7 +96,6 @@ class LockKeyTrayApp:
     def app_quit(self):
         print("Exiting...")
         self.is_quit = True
-        self.queue.join()
         self.thread.join()
         self.timer.stop()
         self.app.quit()
